@@ -1,0 +1,51 @@
+name: Backup
+
+# Controls when the workflow will run
+on:
+  # Close for demo
+  #schedule:
+  #  - cron: "40 */3 * * *"
+  ## Allows you to run this workflow manually from the Actions tab
+  #workflow_dispatch:
+
+jobs:
+  backup:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Backup database
+        id: backup
+        uses: NodeRSSBot/supabase-backup-action@main
+        with:
+          database_url: ${{ secrets.PG_URI }}
+      - name: Delete old files
+        run: |
+          git remote rename origin not-origin
+          deno run --allow-run --allow-read --allow-write scripts/del-old-file.ts
+          git remote rename not-origin origin
+      - name: Compress with zstd
+        run: |
+          tar -cvf - ${{ steps.backup.outputs.dir }} | zstd -15 -T0 > "backup/$(basename ${{ steps.backup.outputs.dir }}).tar.zst"
+          rm -rf ${{ steps.backup.outputs.dir }}
+      - name: Run a multi-line script
+        run: |
+          du -sh backup
+          tree backup
+          git status
+      - name: multi-file-commit
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          # The commit message for the commit.
+          commit_message: "backup"
+          commit_author: Author <actions@github.com>
+          push_options: "--force"
