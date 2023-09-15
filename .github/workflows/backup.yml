@@ -37,7 +37,7 @@ jobs:
         run: |
           tar -cvf - ${{ steps.backup.outputs.dir }} | zstd -15 -T0 > "backup/$(basename ${{ steps.backup.outputs.dir }}).tar.zst"
           rm -rf ${{ steps.backup.outputs.dir }}
-      - name: Run a multi-line script
+      - name: Log Stat
         run: |
           du -sh backup
           tree backup
